@@ -1,0 +1,76 @@
+package com.senseskill.controller;
+
+import com.senseskill.model.QuizResult;
+import com.senseskill.model.Recommendation;
+import com.senseskill.model.User;
+import com.senseskill.repository.LearningProgressRepository;
+import com.senseskill.repository.QuizResultRepository;
+import com.senseskill.repository.RecommendationRepository;
+import com.senseskill.repository.UserRepository;
+import com.senseskill.util.JwtUtil;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/community")
+@RequiredArgsConstructor
+public class CommunityController {
+
+    @Autowired private UserRepository userRepo;
+    @Autowired private LearningProgressRepository progressRepo;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private QuizResultRepository quizRepo;
+    @Autowired private RecommendationRepository recommendationRepo;
+    
+    @GetMapping("/insights")
+    public ResponseEntity<?> getCommunityInsights(HttpServletRequest request) {
+        // Get current user
+        String token = request.getHeader("Authorization").substring(7);
+        String email = jwtUtil.extractUsername(token);
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Invalid user");
+
+        User user = userOpt.get();
+        
+        String strength = null;
+        
+        QuizResult quizResult = quizRepo.findTopByUserOrderByTakenAtDesc(user);
+        if (quizResult != null) {
+        }
+
+        // If quiz result is null, fallback to recommendation record
+        if (strength == null) {
+            Recommendation rec = recommendationRepo.findTopByUserOrderByRecommendedAtDesc(user);
+            if (rec != null) {
+                strength = rec.getStrength();  // assuming RecommendationRecord has getStrength()
+            }
+        }
+
+        if (strength == null) {
+            return ResponseEntity.badRequest().body("No strength data found from quiz or recommendation.");
+        }
+
+        
+        List<Object[]> data = progressRepo.findPopularTopicsByStrength(strength);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object[] row : data) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("topic", row[0]);
+            map.put("count", row[1]);
+            result.add(map);
+        }
+
+        return ResponseEntity.ok(Map.of(
+            "strength", strength,
+            "popularTopics", result
+        ));
+    }
+}

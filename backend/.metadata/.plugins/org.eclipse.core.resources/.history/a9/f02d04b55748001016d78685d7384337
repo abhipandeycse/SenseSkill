@@ -1,0 +1,26 @@
+package com.senseskill.controller;
+
+import com.senseskill.security.CustomUserDetails;
+import com.senseskill.model.User;
+
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/user")
+public class UserController {
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        User user = userDetails.getUser();
+
+        return ResponseEntity.ok(Map.of(
+            "email", user.getEmail(),
+            "name", user.getName()
+        ));
+    }
+}

@@ -1,0 +1,25 @@
+package com.senseskill.controller;
+
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import com.senseskill.service.FlaskService;
+
+@RestController
+public class FlaskController {
+	
+    @Autowired
+    private FlaskService flaskService;
+
+    @PostMapping("/analyze")
+    public ResponseEntity<?> analyzeText(@RequestBody Map<String, String> payload) {
+        String input = payload.get("text");
+
+        Map<String, Object> analysisResult = flaskService.analyzeText(input);
+
+        return ResponseEntity.ok(analysisResult);
+    }
+}

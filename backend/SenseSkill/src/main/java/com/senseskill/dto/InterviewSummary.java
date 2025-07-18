@@ -1,0 +1,24 @@
+package com.senseskill.dto;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import com.senseskill.model.AnswerFeedback;
+import com.senseskill.model.FinalFeedback;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class InterviewSummary {
+    private String sessionId;
+    private List<AnswerFeedback> answers;
+    private FinalFeedback feedback;
+    private LocalDateTime startedAt;
+    private List<String> topics;
+    // Getters
+}

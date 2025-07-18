@@ -1,0 +1,112 @@
+package com.senseskill.controller;
+
+import com.senseskill.dto.SkillQuizResponse;
+import com.senseskill.model.QuizResult;
+import com.senseskill.model.SkillQuestion;
+import com.senseskill.model.User;
+import com.senseskill.repository.QuizResultRepository;
+import com.senseskill.repository.SkillQuestionRepository;
+import com.senseskill.repository.UserRepository;
+import com.senseskill.service.SkillSuggestionService;
+import com.senseskill.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/skill-quiz")
+public class SkillQuizController {
+
+    @Autowired private SkillQuestionRepository questionRepo;
+    @Autowired private SkillSuggestionService suggestionService;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private QuizResultRepository quizResultRepo;
+    @Autowired private UserRepository userRepo;
+    
+    @GetMapping("/questions")
+    public ResponseEntity<?> getQuestions() {
+        List<SkillQuestion> allQuestions = questionRepo.findAll();
+
+        // Shuffle and pick first 20
+        Collections.shuffle(allQuestions);
+        List<SkillQuestion> random2 = allQuestions.stream()
+                .limit(2)
+                .toList();
+
+        return ResponseEntity.ok(random2);
+    }
+
+//    @PostMapping("/submit")
+//    public ResponseEntity<?> submitQuiz(@RequestBody List<SkillQuizResponse> responses) {
+//        // Simple logic: Count category frequency → most selected wins
+//        Map<String, Integer> categoryCount = new HashMap<>();
+//
+//        for (SkillQuizResponse res : responses) {
+//            SkillQuestion q = questionRepo.findById(res.getQuestionId()).orElse(null);
+//            if (q == null) continue;
+//            categoryCount.put(q.getCategory(), categoryCount.getOrDefault(q.getCategory(), 0) + 1);
+//        }
+//
+//        String topCategory = categoryCount.entrySet()
+//                .stream()
+//                .max(Map.Entry.comparingByValue())
+//                .map(Map.Entry::getKey)
+//                .orElse("general");
+//
+//        List<String> skills = suggestionService.getSuggestions(topCategory);
+//
+//        Map<String, Object> result = new HashMap<>();
+//        result.put("strength", topCategory);
+//        result.put("suggested_skills", skills);
+//
+//        return ResponseEntity.ok(result);
+//    }
+    
+    
+    @PostMapping("/submit")
+    public ResponseEntity<?> submitQuiz(@RequestBody List<SkillQuizResponse> responses, HttpServletRequest request) {
+        Map<String, Integer> categoryCount = new HashMap<>();
+
+        for (SkillQuizResponse res : responses) {
+            SkillQuestion q = questionRepo.findById(res.getQuestionId()).orElse(null);
+            if (q == null) continue;
+            categoryCount.put(q.getCategory(), categoryCount.getOrDefault(q.getCategory(), 0) + 1);
+        }
+
+        String topCategory = categoryCount.entrySet()
+                .stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("general");
+
+        List<String> skills = suggestionService.getSuggestions(topCategory); 
+
+        String token = request.getHeader("Authorization").substring(7);
+        String email = jwtUtil.extractUsername(token);
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Invalid user.");
+
+        User user = userOpt.get();
+
+        QuizResult quizResult = QuizResult.builder()
+                .dominantStrength(topCategory)
+                .suggestedSkills(String.join(",", skills)) 
+                .takenAt(LocalDateTime.now())
+                .user(user)
+                .build();
+
+        quizResultRepo.save(quizResult);
+
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("strength", topCategory);
+        result.put("suggested_skills", skills);
+
+        return ResponseEntity.ok(result);
+    }
+}

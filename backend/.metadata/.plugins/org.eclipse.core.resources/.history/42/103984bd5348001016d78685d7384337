@@ -1,0 +1,18 @@
+package com.senseskill.service;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class UserService {
+	public boolean verifyUser(String code) {User user = userRepository.findByVerificationCode(code);
+
+	    if (user == null || user.isVerified()) {
+	        return false;
+	    }
+
+	    user.setVerified(true);
+	    user.setVerificationCode(null); // optional: delete code after verifying
+	    userRepository.save(user);
+	    return true;
+	}
+}

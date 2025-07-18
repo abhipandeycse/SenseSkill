@@ -1,0 +1,5 @@
+package com.senseskill.dto;
+
+public class Question {
+
+}

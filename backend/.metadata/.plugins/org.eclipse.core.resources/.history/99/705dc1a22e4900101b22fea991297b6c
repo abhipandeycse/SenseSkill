@@ -1,0 +1,133 @@
+package com.senseskill.service;
+
+import com.senseskill.dto.*;
+import com.senseskill.model.*;
+import com.senseskill.repository.InterviewSessionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+
+@Service
+public class InterviewService {
+
+    @Autowired
+    private InterviewSessionRepository interviewSessionRepository;
+
+    private final Map<String, List<String>> topicQuestions = Map.of(
+        "Java", List.of(
+            "What is the difference between JDK, JRE, and JVM?",
+            "Explain OOP concepts in Java.",
+            "What is Spring Boot and how does it work?",
+            "How do you secure REST APIs in Spring Boot?"
+        ),
+        "Data Structures", List.of(
+            "Explain the difference between ArrayList and LinkedList.",
+            "How does a HashMap work internally?",
+            "What is the time complexity of different operations in a BST?",
+            "What are stacks and queues used for?"
+        ),
+        "System Design", List.of(
+            "Design a URL shortener.",
+            "How would you scale a social media feed?",
+            "Explain CAP Theorem.",
+            "Design an e-commerce platform backend."
+        )
+    );
+
+    public InterviewSession startSession(InterviewRequest req) {
+        String sessionId = UUID.randomUUID().toString();
+
+        List<String> allQuestions = new ArrayList<>();
+        allQuestions.add("Tell me about yourself."); // Always first
+
+        for (String topic : req.getTopics()) {
+            allQuestions.addAll(topicQuestions.getOrDefault(topic, List.of()));
+        }
+
+        InterviewSession session = new InterviewSession(
+            sessionId,
+            req.getUserId(),
+            allQuestions,
+            new ArrayList<>(),
+            0
+        );
+
+        interviewSessionRepository.save(session);
+        return session;
+    }
+
+    public Question getNextQuestion(String sessionId) {
+        InterviewSession session = interviewSessionRepository.findById(sessionId).orElse(null);
+        if (session == null) return null;
+
+        if (session.getCurrentIndex() < session.getQuestions().size()) {
+            String questionText = session.getQuestions().get(session.getCurrentIndex());
+            return new Question(questionText);
+        }
+
+        return null;
+    }
+
+    public AnswerFeedback saveAnswer(String sessionId, String transcribedAnswer) {
+        InterviewSession session = interviewSessionRepository.findById(sessionId).orElse(null);
+        if (session == null) return null;
+
+        int index = session.getCurrentIndex();
+        if (index >= session.getQuestions().size()) return null;
+
+        String question = session.getQuestions().get(index);
+
+        // Dummy scoring logic (later improve with ML/NLP)
+        int confidence = (int) (Math.random() * 100);
+        int clarity = (int) (Math.random() * 100);
+
+        AnswerFeedback feedback = new AnswerFeedback(question, transcribedAnswer, confidence, clarity);
+
+        session.getAnswers().add(feedback);
+        session.setCurrentIndex(index + 1);
+
+        interviewSessionRepository.save(session);
+        return feedback;
+    }
+
+    public FinalFeedback getFinalFeedback(String sessionId) {
+        InterviewSession session = interviewSessionRepository.findById(sessionId).orElse(null);
+        if (session == null) return null;
+
+        List<AnswerFeedback> allFeedback = session.getAnswers();
+        List<String> suggestions = new ArrayList<>();
+        int totalScore = 0;
+
+        for (AnswerFeedback f : allFeedback) {
+            totalScore += f.getConfidenceScore() + f.getClarityScore();
+
+            if (f.getConfidenceScore() < 50) {
+                suggestions.add("Improve your confidence while answering: \"" + f.getQuestion() + "\".");
+            }
+            if (f.getClarityScore() < 50) {
+                suggestions.add("Be more clear and structured: \"" + f.getQuestion() + "\".");
+            }
+        }
+
+        int overallScore = totalScore / (allFeedback.size() * 2);
+
+        return new FinalFeedback(overallScore, suggestions);
+    }
+
+    public List<String> getAllTopics() {
+        return new ArrayList<>(topicQuestions.keySet());
+    }
+
+    public List<InterviewSummary> getHistory(String userId) {
+        List<InterviewSession> sessions = interviewSessionRepository.findByUserId(userId);
+        List<InterviewSummary> summaries = new ArrayList<>();
+
+        for (InterviewSession s : sessions) {
+            FinalFeedback feedback = getFinalFeedback(s.getSessionId());
+            summaries.add(new InterviewSummary(s.getSessionId(), s.getQuestions(), feedback));
+        }
+
+        return summaries;
+    }
+}

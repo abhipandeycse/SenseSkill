@@ -1,0 +1,27 @@
+package com.senseskill.service;
+
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+@Service
+public class FlaskService {
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    public String getEmotion(String text) {
+        String url = "http://localhost:5000/emotion";
+        Map<String, String> request = Map.of("text", text);
+        ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+        return (String) response.getBody().get("emotion");
+    }
+
+    public String getCareer(String text) {
+        String url = "http://localhost:5000/career";
+        Map<String, String> request = Map.of("text", text);
+        ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+        return (String) response.getBody().get("career");
+    }
+}

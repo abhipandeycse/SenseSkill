@@ -1,0 +1,11 @@
+package com.senseskill.repository;
+
+import com.senseskill.model.LearningProgress;
+import com.senseskill.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface LearningProgressRepository extends JpaRepository<LearningProgress, Long> {
+    List<LearningProgress> findByUser(User user);
+}

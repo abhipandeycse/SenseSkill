@@ -1,0 +1,113 @@
+package com.senseskill.controller;
+
+import com.senseskill.dto.*;
+import com.senseskill.model.*;
+import com.senseskill.repository.UserRepository;
+import com.senseskill.service.InterviewService;
+import com.senseskill.service.SpeechToTextService;
+import com.senseskill.service.TextToSpeechService;
+import com.senseskill.util.JwtUtil;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/interview")
+@RequiredArgsConstructor
+public class InterviewController {
+
+    @Autowired private InterviewService interviewService;
+    @Autowired private UserRepository userRepo;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private TextToSpeechService textToSpeechService;
+    @Autowired private SpeechToTextService speechToTextService;
+
+    // ➤ Start Interview Session
+    @PostMapping("/start")
+    public ResponseEntity<?> startInterview(@RequestBody InterviewRequest request, HttpServletRequest httpRequest) {
+        String email = extractEmail(httpRequest);
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Unauthorized");
+
+        InterviewSession session = interviewService.startSession(request.getTopics(), userOpt.get());
+        return ResponseEntity.ok(session);
+    }
+
+    // ➤ Next Question
+    @GetMapping("/next/{sessionId}")
+    public ResponseEntity<?> getNext(@PathVariable String sessionId) {
+        Question question = interviewService.getNextQuestion(sessionId);
+        if (question == null) return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(question);
+    }
+
+    // ➤ Submit Answer
+    @PostMapping("/answer")
+    public ResponseEntity<?> submitAnswer(@RequestBody VoiceAnswerRequest answer, HttpServletRequest httpRequest) {
+        String email = extractEmail(httpRequest);
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Unauthorized");
+
+        AnswerFeedback feedback = interviewService.saveAnswer(answer.getSessionId(), answer.getTranscribedAnswer(), userOpt.get());
+        return ResponseEntity.ok(feedback);
+    }
+
+    // ➤ Final Feedback
+    @GetMapping("/final/{sessionId}")
+    public ResponseEntity<?> getFinalFeedback(@PathVariable String sessionId, HttpServletRequest httpRequest) {
+        String email = extractEmail(httpRequest);
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Unauthorized");
+
+        FinalFeedback feedback = interviewService.getFinalFeedback(sessionId, userOpt.get());
+        return ResponseEntity.ok(feedback);
+    }
+
+    // ➤ Topics
+    @GetMapping("/topics")
+    public ResponseEntity<List<String>> getTopics() {
+        return ResponseEntity.ok(interviewService.getAllTopics());
+    }
+
+    // ➤ History
+    @GetMapping("/history")
+    public ResponseEntity<?> getHistory(HttpServletRequest request) {
+        String email = extractEmail(request);
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Unauthorized");
+
+        List<InterviewSummary> history = interviewService.getHistorySummary(userOpt.get());
+        return ResponseEntity.ok(history);
+    }
+    // ➤ Speak Question
+    @GetMapping("/speak/{sessionId}")
+    public ResponseEntity<byte[]> speakQuestion(@PathVariable String sessionId) throws Exception {
+        Question question = interviewService.getNextQuestion(sessionId);
+        byte[] audio = textToSpeechService.synthesizeSpeech(question.getQuestionText());
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf("audio/mpeg"))
+                .body(audio);
+    }
+
+    // ➤ Transcribe
+    @PostMapping("/transcribe")
+    public ResponseEntity<String> transcribe(@RequestBody byte[] audioData) throws Exception {
+        String text = speechToTextService.transcribe(audioData);
+        return ResponseEntity.ok(text);
+    }
+
+    // ✅ Utility
+    private String extractEmail(HttpServletRequest request) {
+        String token = request.getHeader("Authorization").substring(7);
+        return jwtUtil.extractUsername(token);
+    }
+}

@@ -1,0 +1,151 @@
+package com.senseskill.service;
+
+import com.senseskill.dto.*;
+import com.senseskill.model.*;
+import com.senseskill.repository.InterviewSessionRepository;
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+public class InterviewService {
+
+    @Autowired private InterviewSessionRepository sessionRepo;
+
+    // ✅ Realistic question bank categorized by topic
+    private static final Map<String, List<String>> topicWiseQuestions = Map.of(
+        "DSA", List.of(
+            "Explain time and space complexity.",
+            "What is a binary search tree?",
+            "How does quicksort work?",
+            "Difference between BFS and DFS?",
+            "When would you use a heap?"
+        ),
+        "OOPs", List.of(
+            "What are the four pillars of OOP?",
+            "What is polymorphism? Types?",
+            "Explain abstraction vs encapsulation.",
+            "What is method overriding?",
+            "Difference between class and interface in Java?"
+        ),
+        "DBMS", List.of(
+            "What is normalization? Explain types.",
+            "Difference between SQL and NoSQL.",
+            "What is indexing and how does it work?",
+            "What is a transaction? ACID properties?",
+            "Explain primary key vs foreign key."
+        ),
+        "OS", List.of(
+            "What is a process and thread?",
+            "What is a deadlock and how to prevent it?",
+            "Explain paging and segmentation.",
+            "What are system calls?",
+            "Difference between multiprocessing and multithreading?"
+        ),
+        "HR", List.of(
+            "Tell me about yourself.",
+            "Why do you want this job?",
+            "What are your strengths and weaknesses?",
+            "Describe a challenge you faced and how you handled it.",
+            "Where do you see yourself in 5 years?"
+        )
+    );
+
+    // ➤ Get available topics
+    public List<String> getAllTopics() {
+        return new ArrayList<>(topicWiseQuestions.keySet());
+    }
+
+    public InterviewSession startSession(List<String> selectedTopics, User user) {
+        List<String> allQuestions = new ArrayList<>(List.of("Tell me about yourself."));
+        selectedTopics.forEach(topic -> {
+            allQuestions.addAll(topicWiseQuestions.getOrDefault(topic, List.of()));
+        });
+
+        Collections.shuffle(allQuestions);
+
+        InterviewSession session = InterviewSession.builder()
+                .sessionId(UUID.randomUUID().toString())
+                .user(user)
+                .topics(selectedTopics)
+                .questions(allQuestions)
+                .answers(new ArrayList<>())
+                .currentIndex(0)
+                .startedAt(LocalDateTime.now())
+                .build();
+
+        return sessionRepo.save(session);
+    }
+
+    public Question getNextQuestion(String sessionId) {
+        InterviewSession session = sessionRepo.findById(sessionId).orElse(null);
+        if (session == null || session.getCurrentIndex() >= session.getQuestions().size()) return null;
+
+        String question = session.getQuestions().get(session.getCurrentIndex());
+        session.setCurrentIndex(session.getCurrentIndex() + 1);
+        sessionRepo.save(session);
+
+        return new Question(question);
+    }
+
+    public AnswerFeedback saveAnswer(String sessionId, String answer, User user) {
+        InterviewSession session = sessionRepo.findById(sessionId).orElseThrow();
+        int index = session.getCurrentIndex() - 1;
+
+        String question = session.getQuestions().get(index);
+        int confidence = new Random().nextInt(30) + 70;
+        int clarity = new Random().nextInt(30) + 60;
+
+        AnswerFeedback feedback = new AnswerFeedback(question, answer, confidence, clarity);
+        session.getAnswers().add(feedback);
+        sessionRepo.save(session);
+
+        return feedback;
+    }
+
+    public FinalFeedback getFinalFeedback(String sessionId, User user) {
+        InterviewSession session = sessionRepo.findById(sessionId).orElseThrow();
+        if (!session.getUser().getId().equals(user.getId())) throw new RuntimeException("Unauthorized");
+
+        if (session.getFinalFeedback() != null) return session.getFinalFeedback();
+
+        int totalConfidence = 0, totalClarity = 0, total = session.getAnswers().size();
+
+        for (AnswerFeedback ans : session.getAnswers()) {
+            totalConfidence += ans.getConfidenceScore();
+            totalClarity += ans.getClarityScore();
+        }
+
+        int avgConfidence = totalConfidence / total;
+        int avgClarity = totalClarity / total;
+        int overall = (avgConfidence + avgClarity) / 2;
+
+        List<String> suggestions = new ArrayList<>();
+        if (overall < 60) suggestions.add("Improve confidence and clarity.");
+        else if (overall < 75) suggestions.add("Good, but structure can be better.");
+        else suggestions.add("Excellent performance!");
+
+        FinalFeedback feedback = new FinalFeedback(null, overall, suggestions);
+        session.setFinalFeedback(feedback);
+        sessionRepo.save(session);
+
+        return feedback;
+    }
+
+    public List<InterviewSummary> getHistorySummary(User user) {
+        List<InterviewSession> sessions = sessionRepo.findByUser(user);
+        return sessions.stream()
+                .map(s -> new InterviewSummary(
+                		s.getSessionId(),
+                        s.getAnswers(),
+                        s.getFinalFeedback(),
+                        s.getStartedAt(),
+                        s.getTopics()
+                )).toList();
+    }
+}

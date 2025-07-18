@@ -1,0 +1,153 @@
+package com.senseskill.controller;
+
+import com.senseskill.dto.AuthLoginRequest;
+import com.senseskill.dto.AuthRequest;
+import com.senseskill.dto.VerifyRequest;
+import com.senseskill.model.User;
+import com.senseskill.repository.UserRepository;
+import com.senseskill.service.EmailService;
+import com.senseskill.util.JwtUtil;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/auth")
+public class AuthController {
+
+    @Autowired
+    private UserRepository userRepo;
+
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @PostMapping("/signup")
+    public ResponseEntity<?> signup(@RequestBody AuthRequest request) {
+        if (userRepo.existsByEmail(request.getEmail())) {
+            return ResponseEntity.badRequest().body("Email already registered.");
+        }
+
+        String otp = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
+        User user = User.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .verified(false)
+                .verificationCode(otp)
+                .build();
+
+        userRepo.save(user);
+
+        emailService.sendVerificationEmail(user.getEmail(), otp);
+
+        return ResponseEntity.ok("Signup successful. Check email for verification code.");
+    }
+    
+    @PostMapping("/verify")
+    public ResponseEntity<?> verify(@RequestBody VerifyRequest request) {
+        return userRepo.findByEmail(request.getEmail())
+                .map(user -> {
+                    if (user.isVerified()) {
+                        return ResponseEntity.badRequest().body("Already verified.");
+                    }
+                    if (user.getVerificationCode().equals(request.getVerificationCode())) {
+                        user.setVerified(true);
+                        user.setVerificationCode(null);
+                        userRepo.save(user);
+                        return ResponseEntity.ok("Email verified successfully.");
+                    } else {
+                        return ResponseEntity.status(400).body("Invalid verification code.");
+                    }
+                })
+                .orElse(ResponseEntity.status(404).body("User not found."));
+    }
+    
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody AuthLoginRequest request) {
+        Optional<User> userOpt = userRepo.findByEmail(request.getEmail());
+
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+        }
+
+        User user = userOpt.get();
+
+        if (!user.isVerified()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Please verify your email first");
+        }
+
+        boolean passwordMatch = passwordEncoder.matches(request.getPassword(), user.getPassword());
+        if (!passwordMatch) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+        }
+
+        String token = jwtUtil.generateToken(user.getEmail());
+
+        return ResponseEntity.ok().body(Map.of(
+            "message", "Login successful",
+            "token", token
+        ));
+    }
+    
+    @PostMapping("/request-reset-password")
+    public ResponseEntity<String> requestResetPassword(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+
+        Optional<User> optionalUser = userRepo.findByEmail(email);
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No user with that email.");
+        }
+
+        User user = optionalUser.get();
+        String token = UUID.randomUUID().toString().toUpperCase();
+        user.setResetPasswordToken(token);
+        user.setResetTokenExpiration(LocalDateTime.now().plusMinutes(15));
+        userRepo.save(user);
+        
+        
+        emailService.sendEmail(user.getEmail(),token);
+
+        return ResponseEntity.ok("Reset password link sent to your email.");
+    }
+    
+    
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody Map<String, String> payload) {
+        String token = payload.get("token");
+        String newPassword = payload.get("newPassword");
+
+        Optional<User> optionalUser = userRepo.findByResetPasswordToken(token);
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid or expired token.");
+        }
+
+        User user = optionalUser.get();
+
+        if (user.getResetTokenExpiration() == null || user.getResetTokenExpiration().isBefore(LocalDateTime.now())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Token expired.");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setResetPasswordToken(null);
+        user.setResetTokenExpiration(null);
+        userRepo.save(user);
+
+        return ResponseEntity.ok("Password has been reset successfully.");
+    }
+
+}

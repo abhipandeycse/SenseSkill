@@ -1,0 +1,5 @@
+package com.senseskill.util;
+
+public class JwtUtil {
+
+}

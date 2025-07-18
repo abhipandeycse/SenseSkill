@@ -1,0 +1,28 @@
+package com.senseskill.controller;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class FlaskController {
+	@PostMapping("/analyze")
+	public ResponseEntity<?> analyzeText(@RequestBody Map<String, String> payload) {
+	    String input = payload.get("text");
+
+	    // Call Flask API
+	    String emotion = flaskService.getEmotion(input);
+	    String career = flaskService.getCareer(input);
+
+
+	    Map<String, String> response = new HashMap()<>();
+	    response.put("emotion", emotion);
+	    response.put("career", career);
+
+	    return ResponseEntity.ok(response);
+	}
+}

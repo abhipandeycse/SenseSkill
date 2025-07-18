@@ -1,0 +1,85 @@
+package com.senseskill.controller;
+
+import com.senseskill.model.EmotionAnalysis;
+import com.senseskill.model.User;
+import com.senseskill.repository.EmotionAnalysisRepository;
+import com.senseskill.repository.UserRepository;
+import com.senseskill.util.JwtUtil;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import org.springframework.web.client.RestTemplate;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+public class EmotionController {
+
+	@Autowired private EmotionAnalysisRepository emotionRepo;
+	@Autowired private UserRepository userRepo;
+	@Autowired private JwtUtil jwtUtil;
+
+    @PostMapping("/analyze")
+    public ResponseEntity<?> analyzeEmotion(@RequestBody Map<String, String> payload, HttpServletRequest request) {
+        String text = payload.get("text");
+
+        // Call Flask app
+        RestTemplate restTemplate = new RestTemplate();
+        Map<String, String> flaskPayload = new HashMap<>();
+        flaskPayload.put("text", text);
+
+        Map<String, Object> flaskResponse = restTemplate.postForObject(
+                "http://localhost:5000/analyze", flaskPayload, Map.class);
+
+        // Extract data
+        String emotion = (String) flaskResponse.get("emotion");
+        String confidence = (String) flaskResponse.get("confidence");
+        Double polarity = Double.valueOf(flaskResponse.get("polarity").toString());
+
+        // Extract user email from token
+        String token = request.getHeader("Authorization").substring(7);
+        String email = jwtUtil.extractUsername(token);
+
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Invalid user.");
+
+        User user = userOpt.get();
+
+        // Save to DB
+        EmotionAnalysis analysis = EmotionAnalysis.builder()
+                .text(text)
+                .emotion(emotion)
+                .confidence(confidence)
+                .polarity(polarity)
+                .analyzedAt(LocalDateTime.now())
+                .user(user)
+                .build();
+
+        emotionRepo.save(analysis);
+
+        return ResponseEntity.ok(flaskResponse);
+    }
+
+    @GetMapping("/analysis/history")
+    public ResponseEntity<?> getHistory(HttpServletRequest request) {
+        String token = request.getHeader("Authorization").substring(7);
+        String email = jwtUtil.extractUsername(token);
+
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Invalid user.");
+
+        return ResponseEntity.ok(emotionRepo.findByUser(userOpt.get()));
+    }
+    
+    
+}

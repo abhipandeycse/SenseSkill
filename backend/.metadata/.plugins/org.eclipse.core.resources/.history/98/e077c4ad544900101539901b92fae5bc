@@ -1,0 +1,38 @@
+package com.senseskill.service;
+
+import com.google.cloud.speech.v1.*;
+import com.google.protobuf.ByteString;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class SpeechToTextService {
+
+    public String transcribe(byte[] audioBytes) throws Exception {
+        try (SpeechClient speechClient = SpeechClient.create()) {
+
+            ByteString audioData = ByteString.copyFrom(audioBytes);
+
+            RecognitionAudio audio = RecognitionAudio.newBuilder()
+                    .setContent(audioData)
+                    .build();
+
+            RecognitionConfig config = RecognitionConfig.newBuilder()
+                    .setEncoding(RecognitionConfig.AudioEncoding.LINEAR16) // OR .MP3 based on frontend
+                    .setSampleRateHertz(16000)
+                    .setLanguageCode("en-US")
+                    .build();
+
+            RecognizeResponse response = speechClient.recognize(config, audio);
+            List<SpeechRecognitionResult> results = response.getResultsList();
+
+            StringBuilder transcript = new StringBuilder();
+            for (SpeechRecognitionResult result : results) {
+                transcript.append(result.getAlternativesList().get(0).getTranscript());
+            }
+
+            return transcript.toString();
+        }
+    }
+}

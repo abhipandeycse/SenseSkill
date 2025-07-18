@@ -1,0 +1,5 @@
+package com.senseskill.config;
+
+public class SecurityConfig {
+
+}

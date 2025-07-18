@@ -1,0 +1,5 @@
+package com.senseskill.controller;
+
+public class RecommendationController {
+
+}

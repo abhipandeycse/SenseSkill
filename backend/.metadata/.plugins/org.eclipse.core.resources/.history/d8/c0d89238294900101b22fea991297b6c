@@ -1,0 +1,27 @@
+package com.senseskill.model;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+
+@Entity
+@Data
+@RequiredArgsConstructor
+public class AnswerFeedback {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+
+    private String question;
+    private String userAnswer;
+
+    private int confidenceScore;
+    private int clarityScore;
+
+    // Getters and Setters
+}

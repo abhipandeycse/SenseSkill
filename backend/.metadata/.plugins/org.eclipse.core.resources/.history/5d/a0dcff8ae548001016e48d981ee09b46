@@ -1,0 +1,83 @@
+package com.senseskill.controller;
+
+import com.senseskill.model.*;
+import com.senseskill.repository.*;
+import com.senseskill.util.JwtUtil;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/progress")
+@RequiredArgsConstructor
+public class ProgressController {
+
+    private final LearningProgressRepository progressRepo;
+    private final LearningTopicRepository topicRepo;
+    private final UserRepository userRepo;
+    private final JwtUtil jwtUtil;
+
+    @PostMapping("/update")
+    public ResponseEntity<?> updateProgress(@RequestBody Map<String, Object> payload, HttpServletRequest request) {
+        String token = request.getHeader("Authorization").substring(7);
+        String email = jwtUtil.extractUsername(token);
+
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Invalid user");
+
+        User user = userOpt.get();
+
+        String topicName = payload.get("topic").toString();
+        String status = payload.get("status").toString(); // Not Started, In Progress, Stuck, Completed
+        int confidence = Integer.parseInt(payload.get("confidence").toString());
+
+        Optional<LearningTopic> topicOpt = topicRepo.findByName(topicName);
+        if (topicOpt.isEmpty()) return ResponseEntity.badRequest().body("Topic not found");
+
+        LearningTopic topic = topicOpt.get();
+
+        LearningProgress progress = progressRepo.findByUser(user).stream()
+                .filter(p -> p.getTopic().getId().equals(topic.getId()))
+                .findFirst()
+                .orElse(LearningProgress.builder()
+                        .user(user)
+                        .topic(topic)
+                        .build());
+
+        progress.setStatus(status);
+        progress.setConfidence(confidence);
+        progress.setLastUpdated(LocalDateTime.now());
+
+        progressRepo.save(progress);
+
+        return ResponseEntity.ok("Progress updated successfully");
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<?> getUserProgress(HttpServletRequest request) {
+        String token = request.getHeader("Authorization").substring(7);
+        String email = jwtUtil.extractUsername(token);
+
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) return ResponseEntity.status(401).body("Invalid user");
+
+        List<LearningProgress> progressList = progressRepo.findByUser(userOpt.get());
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (LearningProgress progress : progressList) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("topic", progress.getTopic().getName());
+            map.put("status", progress.getStatus());
+            map.put("confidence", progress.getConfidence());
+            map.put("lastUpdated", progress.getLastUpdated());
+            result.add(map);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+}

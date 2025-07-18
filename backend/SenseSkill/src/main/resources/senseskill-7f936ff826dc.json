@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "senseskill",
+  "private_key_id": "7f936ff826dc44bbb9ccc416083b3b0b33dcb02e",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCfsnDxDEt7ALLz\nwlIZWWOoY/hqSqt2aCj+lVZAubplw+g5SDsBUbnVevous0I2nB7sWC7rtOVADMp9\n292RLTPM2MEzVhH3IxHNIRe2OAd3kgK3tRbHPz9GiesOluZ2z8spKEEL3MdrGFyl\nTMWVVLH28Ua4WvXKRMhquIVB+oUnZICfDcrGR1P4WiRunwVDPvTyvmo6rNw3S8ug\nIE9NA357ifGr07zZr0Z1ud0wxfsKEZq4HzW2aICMqyWjPswI9vBVcPxCjfiX5Oe4\nJUXaxLlKk302ZgjoFHgNBMeVU4483PHwZZXUexaQYaRVlReqSB2Nfy0E3zpRWixz\ndhySiWtrAgMBAAECggEALyg5uqx3Q4i2z01UAgFH8OsoaXbIQAxNArRlhnJxzOg3\nVGb0aZTRC+2nIBA2HrsmVINLw7Wktq+wQc8hk+OltrlQ/9BMOM7FzG2Xu2q7Jb9b\nhxT193tBO5qxaxr7Th1ZMDufTZnx1zmX7gYIGGssrC+eQwU1LHf4OK9pRkzsce9/\nqraPu/0DeFq1V/WYQsW+JOWalCDKr+GZpkSx709sbkye9pYIn7oOkCJvJolDYx/Q\n4+n+r6Xc5DNaa009KN9xIuKHumnbgH58u5piEM6dnqHJPUTIulubwTivA50oQ5Jk\nIivu6a9jq0q1QbVjHrF4Mb8bAPIxvf5PvEURXjToaQKBgQDPKRO6WF8Aj5j1yDkK\nQcuCrzDxQPmcq6aB7dsFxWCpT+QQcAssrXKC4r/S0qyXAjB6aY/p89kuOK0qsqSf\nq+YS1LQi22ecHtLzohgUC5u1rCEFPdinG1/T73kjg4jiJMuCq6xmGG8CBFtNAonE\nqE9CcT9tqY5Bo/S9xC9iUUY5cwKBgQDFWMQKZzeknogh+Z/zULAvXd+j55eoEPuW\nsyi0cnxmwgGgqeOSkEzYf6uL/DD6Tiv1U0AtJd0hNfDc4hhpQHOpEX4Nm+je6YYU\n1o+aanN2ul+Nza3dNEj860QBuL/99fGZHYAtmm4fnCo1eyFuUrCVsuN2u5vcWLVJ\n0rKTZl7oKQKBgDhUFwUoWkywvwq1sqzTTx7tvAUdgcHT+qaBonhjPvFKw9ykWqV/\nVA+60CXnGv7EnaHrajJXF8q1poBhqtmvyBN+uqxvtDCDQSD2Bk4NCf3QG/ps4qgt\njVT3XJ0HewTitGOHgo0QP77wqFK8SfGrQkHywSh0XjYC+t1OpwO4zbt5AoGAK1NV\nlsMaYDW9xVe8Wfq48200kBNkJC22Tlt+8D7COP0WxmMF50Nu24kL7GuthQZseCuS\nx1asuYHSI2wv18uimNeSSQKVmXrDSQfh9xCv0L0SBVvGc+3qqDwubgJVhDfelrL3\nVQu2aZIrYhpqOIJG6lafwY1mpnWDN3XeZqXu6CECgYASqRcgmNWu3PoeIAn0K+AB\nSApDVU5ZFpDdDPf9ejal2AzpSfUXGR0qT9JD5qEJN7yIGaTGAjYUn1UvSTjEZDpT\nBVyspHHDacroWojH8DT8x7/YHtG4FAqoZeT/cVcGe5xtOoU7PNmYpyv4MKBoUXNo\neEAg7K3v/NDTPyCBlP+ymw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "senseskill@senseskill.iam.gserviceaccount.com",
+  "client_id": "118361070291697760704",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/senseskill%40senseskill.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

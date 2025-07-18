@@ -1,0 +1,5 @@
+package com.senseskill.security;
+
+public class CustomUserDetails {
+
+}

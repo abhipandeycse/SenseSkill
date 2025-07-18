@@ -1,0 +1,5 @@
+package com.senseskill.model;
+
+public class InterviewSession {
+
+}
